@@ -21,13 +21,17 @@ Nr = 5    # Number of ladder rungs
 N = 2*Nr  # Total number of sites on the ladder
 
 # Interaction parameters
-h = 0.5
+h = 0
 J = 1                 
-th = 0.2
+th = 0
 J_par = J*math.cos(th)
 J_perp = J*math.sin(th)
 
 
+
+# -----------------------------------------------------------------------------
+# 1) Build the matrix associated to the Hamiltonian 
+# -----------------------------------------------------------------------------
 
 # Define the Pauli spin matrices plus the 2x2 identity matrix
 Sx = 0.5 * np.array([[0, 1], [1, 0]], dtype=complex)
@@ -90,12 +94,74 @@ def H_matrix(N):
 ham = H_matrix(N)
 
 # Check Hermiticity
-print("Hamiltonian shape:", ham.shape)
+#print("Hamiltonian shape:", ham.shape)
 #print("Hermitian check (H - H†):", np.linalg.norm(ham - ham.conj().T))
 
 end_time1 = time.time()
 elapsed_time1 = end_time1 - start_time1
 print("Elapsed time:", elapsed_time1)
+
+
+
+# -----------------------------------------------------------------------------
+# 2) Use the Lanczos algorithm to get an mxm tridiagonal real matrix from H
+# -----------------------------------------------------------------------------
+
+
+def lanczos(H, m, v0=None):
+    n = H.shape[0]
+    if v0 is None:
+        v = np.random.randn(n) + 1j * np.random.randn(n)
+    else:
+        v = v0
+    v = v / np.linalg.norm(v)
+
+    V = np.zeros((n, m), dtype=np.complex128)
+    alpha = np.zeros(m, dtype=np.float64)
+    beta = np.zeros(m - 1, dtype=np.float64)
+
+    V[:, 0] = v
+    w = H @ v
+    alpha[0] = np.real(np.vdot(v, w))
+    w = w - alpha[0] * v
+
+    for j in range(1, m):
+        # Full reorthogonalization
+        for i in range(j):
+            proj = np.vdot(V[:, i], w)
+            w -= proj * V[:, i]
+
+        beta[j - 1] = np.linalg.norm(w)
+        if beta[j - 1] < 1e-12:
+            V = V[:, :j]
+            alpha = alpha[:j]
+            beta = beta[:j - 1]
+            break
+
+        v = w / beta[j - 1]
+        V[:, j] = v
+        w = H @ v
+
+        # Reorthogonalize
+        for i in range(j + 1):
+            proj = np.vdot(V[:, i], w)
+            w -= proj * V[:, i]
+
+        alpha[j] = np.real(np.vdot(v, w))
+
+    return alpha, beta, V
+
+
+
+
+# -----------------------------------------------------------------------------
+# 3) Extract the m eigenvalues with a built-in efficient function
+# -----------------------------------------------------------------------------
+
+
+from scipy.linalg import eigh_tridiagonal
+alpha, beta, V = lanczos(ham, m=3)
+eigs, _ = eigh_tridiagonal(alpha, beta)
 
 
 
