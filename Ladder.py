@@ -17,7 +17,7 @@ import math
 import time
 
 
-Nr = 5    # Number of ladder rungs
+Nr = 4    # Number of ladder rungs
 N = 2*Nr  # Total number of sites on the ladder
 
 # Interaction parameters
@@ -107,7 +107,7 @@ print("Elapsed time:", elapsed_time1)
 # 2) Use the Lanczos algorithm to get an mxm tridiagonal real matrix from H
 # -----------------------------------------------------------------------------
 
-
+"""
 def lanczos(H, m, v0=None):
     n = H.shape[0]
     if v0 is None:
@@ -151,7 +151,7 @@ def lanczos(H, m, v0=None):
 
     return alpha, beta, V
 
-
+"""
 
 
 # -----------------------------------------------------------------------------
@@ -159,10 +159,70 @@ def lanczos(H, m, v0=None):
 # -----------------------------------------------------------------------------
 
 
-from scipy.linalg import eigh_tridiagonal
-alpha, beta, V = lanczos(ham, m=3)
-eigs, _ = eigh_tridiagonal(alpha, beta)
+from scipy.linalg import eigh_tridiagonal, eigh
+#alpha, beta, V = lanczos(ham, m=5)
+#eigs, _ = eigh_tridiagonal(alpha, beta)
+eigenvalues, eigenvectors = eigh(ham)
+#print(eigs[0])
+#print(eigenvalues[0])
+
+
+def sz_total(n):
+    Sz_total = np.zeros((2**n, 2**n), dtype=complex)
+    for i in range(n):
+        Sz_total += Sz_list[i]
+
+    return Sz_total
 
 
 
+def compute_sz_sector(eigenv, Sz_tot):
+       #Return the total Sz expectation value for each eigenvector.
+    sectors = []
+    for i in range(eigenv.shape[1]):
+        psi = eigenv[:, i]
+        sz_val = np.vdot(psi, Sz_tot @ psi).real  # expectation value
+        sectors.append(round(sz_val, 5))  # rounding helps reduce numerical noise
+    return sectors
+
+
+
+
+# -----------------------------------------------------------------------------
+# 4) Obtain the "magnetization vs h" plot, starting from energy eigenvalues
+# -----------------------------------------------------------------------------
+
+autovalori = np.asarray([-1,-0.5,3,8])
+
+def magnetisation(autov):
+    n_inters = len(autov)-1
+    h_arr = np.zeros(n_inters, dtype=np.float32)
+    m_arr = np.zeros(n_inters, dtype=np.float32)
+    x = 0
+    for i in  range(n_inters):
+        x = autov[i+1] - autov[i]
+        h_arr[i] += x
+        m_arr[i] += i
+    return h_arr, m_arr
+
+
+
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.rcParams['text.usetex'] = False
+
+# Discontinuity points (edges of steps)
+x_steps, y_heights = magnetisation(autovalori)
+
+
+x_plot = np.insert(x_steps, 0, 0)                
+y_plot = np.insert(y_heights, 0, 0)  
+
+# Plot of step function
+fig_m, ax_m = plt.subplots(figsize=(6.2, 4.5))
+ax_m.step(x_plot, y_plot, where='pre')
+ax_m.set_xlabel(r'$ h $', fontsize=15)
+ax_m.set_ylabel(r'$ m $', fontsize=15)
+ax_m.grid(True)
+plt.show()
 
