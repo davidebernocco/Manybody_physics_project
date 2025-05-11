@@ -226,3 +226,61 @@ ax_m.set_ylabel(r'$ m $', fontsize=15)
 ax_m.grid(True)
 plt.show()
 
+
+
+# \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+    
+import itertools
+import numpy as np
+import math
+
+
+def generate_binary_arrays(n, k):
+    num = math.comb(n, k)
+    arrays = np.zeros((num, n), dtype=int)
+    j = 0
+    for ones_positions in itertools.combinations(range(n), k):
+        array = np.zeros(n, dtype=int)
+        for pos in ones_positions:
+            array[pos] += 1
+        arrays[j] = array
+        j +=1
+    return arrays
+
+Nr = 3
+N = 2*Nr  
+
+Sz_fix = np.asarray([i for i in range(int(-N/2), int(N/2) +1)], dtype=int)
+N_1 = np.asarray([i for i in range(N+1)], dtype=int)
+dict_Sz = dict(zip(Sz_fix, N_1))
+
+# If I want to generate the arrays associated to the sector Sz = fixed (ex. 0)
+list_Sz_fixed = np.asarray(generate_binary_arrays(N, dict_Sz[0]))
+
+
+def array_of_integers(lst):
+    N_Sz = len(lst)
+    v_m = np.zeros(N_Sz, dtype=int)
+    j = 0
+    for lst_j in lst:
+        m = 0
+        for i in range(N):
+            m += lst_j[i] * (2 ** (i))
+        v_m[j] += m
+        j += 1
+    return v_m
+
+vett_m_Sz = array_of_integers(list_Sz_fixed)
+
+
+
+# Zip, sort by v_m_Sz0, and unzip
+paired = sorted(zip(vett_m_Sz, list_Sz_fixed))      
+v_m_Sz_sorted, list_Sz_fixed_sorted = zip(*paired)
+
+# Convert back to arrays if needed
+v_m_Sz_sorted = np.asarray(list(v_m_Sz_sorted))
+list_Sz_fixed_sorted = np.asarray(list(list_Sz_fixed_sorted))
+
+
