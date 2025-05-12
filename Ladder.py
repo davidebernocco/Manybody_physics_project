@@ -257,7 +257,7 @@ N_1 = np.asarray([i for i in range(N+1)], dtype=int)
 dict_Sz = dict(zip(Sz_fix, N_1))
 
 # If I want to generate the arrays associated to the sector Sz = fixed (ex. 0)
-list_Sz_fixed = np.asarray(generate_binary_arrays(N, dict_Sz[0]))
+list_Sz_fixed = generate_binary_arrays(N, dict_Sz[0])
 
 
 def array_of_integers(lst):
@@ -281,8 +281,8 @@ paired = sorted(zip(vett_m_Sz, list_Sz_fixed))
 v_m_Sz_sorted, list_Sz_fixed_sorted = zip(*paired)
 
 # Convert back to arrays if needed
-v_m_Sz_sorted = np.asarray(list(v_m_Sz_sorted), dtype=np.int32)
-list_Sz_fixed_sorted = np.asarray(list(list_Sz_fixed_sorted))
+v_m_Sz_sorted = np.asarray(v_m_Sz_sorted, dtype=np.int32)
+list_Sz_fixed_sorted = np.asarray(list_Sz_fixed_sorted)
 
 
 
@@ -302,20 +302,21 @@ def Block_Hamiltonian(v, lst):
         # Off-diagonal part of H_Sz
         for i in range(N):
             if lst_j[i] != lst_j[(i+1)%N]:
-                lst_j[i], lst_j[(i+1)%N] = lst_j[(i+1)%N], lst_j[i]
+                vet = lst_j.copy()
+                vet[i], vet[(i+1)%N] = vet[(i+1)%N], vet[i]
                 m = 0
                 for i in range(N):
-                    m += lst_j[i] * (2 ** (i))
+                    m += vet[i] * (2 ** (i))
                 column = np.where(v == m)[0][0]
-            H_Sz[row, column] -= J/2
-        
+                H_Sz[row, column] -= J/2
+        del vet
         
         # Diagonal part of H_Sz
-        lst_j = lst_j - 0.5
+        vet = lst_j.copy() - 0.5
         h1 = 0
         for i in range(N):
-            h1 += lst_j[i] * lst_j[(i+1)%N]
-        H_Sz[row, row] += h1
+            h1 += vet[i] * vet[(i+1)%N]
+        H_Sz[row, row] += J *  h1
            
         row += 1
     
