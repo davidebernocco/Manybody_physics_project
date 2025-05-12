@@ -235,6 +235,7 @@ import itertools
 import numpy as np
 import math
 
+J=1
 
 def generate_binary_arrays(n, k):
     num = math.comb(n, k)
@@ -248,7 +249,7 @@ def generate_binary_arrays(n, k):
         j +=1
     return arrays
 
-Nr = 3
+Nr = 2
 N = 2*Nr  
 
 Sz_fix = np.asarray([i for i in range(int(-N/2), int(N/2) +1)], dtype=int)
@@ -280,7 +281,51 @@ paired = sorted(zip(vett_m_Sz, list_Sz_fixed))
 v_m_Sz_sorted, list_Sz_fixed_sorted = zip(*paired)
 
 # Convert back to arrays if needed
-v_m_Sz_sorted = np.asarray(list(v_m_Sz_sorted))
+v_m_Sz_sorted = np.asarray(list(v_m_Sz_sorted), dtype=np.int32)
 list_Sz_fixed_sorted = np.asarray(list(list_Sz_fixed_sorted))
+
+
+
+
+
+# Once the sector is chosen, and v_m_sorted is built along with list_Sz_sorted,
+# we can build the corresponding hamiltonian block!
+
+def Block_Hamiltonian(v, lst):
+    d = len(lst)
+    H_Sz = np.zeros((d,d), dtype=np.float32)
+    
+    row = 0
+    column = 0
+    for lst_j in lst:
+        
+        # Off-diagonal part of H_Sz
+        for i in range(N):
+            if lst_j[i] != lst_j[(i+1)%N]:
+                lst_j[i], lst_j[(i+1)%N] = lst_j[(i+1)%N], lst_j[i]
+                m = 0
+                for i in range(N):
+                    m += lst_j[i] * (2 ** (i))
+                column = np.where(v == m)[0][0]
+            H_Sz[row, column] -= J/2
+        
+        
+        # Diagonal part of H_Sz
+        lst_j = lst_j - 0.5
+        h1 = 0
+        for i in range(N):
+            h1 += lst_j[i] * lst_j[(i+1)%N]
+        H_Sz[row, row] += h1
+           
+        row += 1
+    
+    return H_Sz
+
+
+Block_H_Sz = Block_Hamiltonian(v_m_Sz_sorted, list_Sz_fixed_sorted)
+
+
+
+
 
 
