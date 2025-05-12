@@ -2,16 +2,16 @@
 Heisemberg S=1/2 model on a ladder.
 (PBC on the two parallel legs "==")
 
-    0==0==0==0==0      "==" : J_parallel = J*cos(theta)
+    1==3==5==7==9      "==" : J_parallel = J*cos(theta)
     |  |  |  |  |      " | " : J_perpendicular = J*sin(theta)
-    0==0==0==0==0
+    0==2==4==6==8
 
 
 The Hilbert space associated to the full system is (C^2)tensor(C^2)...(C^2)
 
 @author: david
 """
-
+"""
 import numpy as np
 import math
 import time
@@ -101,7 +101,7 @@ end_time1 = time.time()
 elapsed_time1 = end_time1 - start_time1
 print("Elapsed time:", elapsed_time1)
 
-
+"""
 
 # -----------------------------------------------------------------------------
 # 2) Use the Lanczos algorithm to get an mxm tridiagonal real matrix from H
@@ -150,21 +150,22 @@ def lanczos(H, m, v0=None):
         alpha[j] = np.real(np.vdot(v, w))
 
     return alpha, beta, V
-
 """
+
 
 
 # -----------------------------------------------------------------------------
 # 3) Extract the m eigenvalues with a built-in efficient function
 # -----------------------------------------------------------------------------
 
-
+"""
 from scipy.linalg import eigh_tridiagonal, eigh
 #alpha, beta, V = lanczos(ham, m=5)
 #eigs, _ = eigh_tridiagonal(alpha, beta)
 eigenvalues, eigenvectors = eigh(ham)
 #print(eigs[0])
 #print(eigenvalues[0])
+
 
 
 def sz_total(n):
@@ -226,7 +227,7 @@ ax_m.set_ylabel(r'$ m $', fontsize=15)
 ax_m.grid(True)
 plt.show()
 
-
+"""
 
 # \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
@@ -234,8 +235,19 @@ plt.show()
 import itertools
 import numpy as np
 import math
+import time
 
-J=1
+
+
+Nr = 12    # Number of ladder rungs
+N = 2*Nr  # Total number of sites on the ladder
+
+# Interaction parameters
+h = 0
+J = 1                 
+th = 0
+J_par = J*math.cos(th)
+J_perp = J*math.sin(th)
 
 def generate_binary_arrays(n, k):
     num = math.comb(n, k)
@@ -248,9 +260,7 @@ def generate_binary_arrays(n, k):
         arrays[j] = array
         j +=1
     return arrays
-
-Nr = 2
-N = 2*Nr  
+  
 
 Sz_fix = np.asarray([i for i in range(int(-N/2), int(N/2) +1)], dtype=int)
 N_1 = np.asarray([i for i in range(N+1)], dtype=int)
@@ -293,39 +303,121 @@ list_Sz_fixed_sorted = np.asarray(list_Sz_fixed_sorted)
 
 def Block_Hamiltonian(v, lst):
     d = len(lst)
-    H_Sz = np.zeros((d,d), dtype=np.float32)
+    H_Sz = np.zeros((d,d), dtype=np.float64)
     
     row = 0
     column = 0
     for lst_j in lst:
         
-        # Off-diagonal part of H_Sz
+        # Off-diagonal part of H_Sz, J_par
         for i in range(N):
+            if lst_j[i] != lst_j[(i+2)%N]:
+                vet = lst_j.copy()
+                vet[i], vet[(i+2)%N] = vet[(i+2)%N], vet[i]
+                m = 0
+                for k in range(N):
+                    m += vet[k] * (2 ** (k))
+                column = np.where(v == m)[0][0]
+                H_Sz[row, column] -= J_par/2
+        del vet
+        
+        # Diagonal part of H_Sz, J_par
+        vet = lst_j.copy() - 0.5
+        h1 = 0
+        for i in range(N):
+            h1 += vet[i] * vet[(i+2)%N]
+        H_Sz[row, row] += J_par *  h1
+        
+        # Off-diagonal part of H_Sz, J_perp
+        for i in range(0,N,2):
             if lst_j[i] != lst_j[(i+1)%N]:
                 vet = lst_j.copy()
                 vet[i], vet[(i+1)%N] = vet[(i+1)%N], vet[i]
                 m = 0
-                for i in range(N):
-                    m += vet[i] * (2 ** (i))
+                for k in range(N):
+                    m += vet[k] * (2 ** (k))
                 column = np.where(v == m)[0][0]
-                H_Sz[row, column] -= J/2
+                H_Sz[row, column] -= J_perp/2
         del vet
         
-        # Diagonal part of H_Sz
+        # Diagonal part of H_Sz, J_perp
         vet = lst_j.copy() - 0.5
-        h1 = 0
-        for i in range(N):
-            h1 += vet[i] * vet[(i+1)%N]
-        H_Sz[row, row] += J *  h1
+        h2 = 0
+        for i in range(0,N,2):
+            h2 += vet[i] * vet[(i+1)%N]
+        H_Sz[row, row] += J_perp *  h2
            
         row += 1
     
     return H_Sz
 
 
+
+
+
+
+from scipy.sparse import lil_matrix
+
+def Block_Hamiltonian_sparse(v, lst):
+    d = len(lst)
+    H_Sz = lil_matrix((d, d), dtype=np.float32)
+    
+    v_index = {val: idx for idx, val in enumerate(v)}  # dictionary for fast lookup
+
+    for row, lst_j in enumerate(lst):
+        # Off-diagonal J_par
+        for i in range(N):
+            if lst_j[i] != lst_j[(i+2)%N]:
+                vet = lst_j.copy()
+                vet[i], vet[(i+2)%N] = vet[(i+2)%N], vet[i]
+                m = sum(vet[k] * (2**k) for k in range(N))
+                column = v_index[m]
+                H_Sz[row, column] -= J_par / 2
+
+        # Diagonal J_par
+        vet = lst_j - 0.5
+        h1 = sum(vet[i] * vet[(i+2)%N] for i in range(N))
+        H_Sz[row, row] += J_par * h1
+
+        # Off-diagonal J_perp
+        for i in range(0, N, 2):
+            if lst_j[i] != lst_j[(i+1)%N]:
+                vet = lst_j.copy()
+                vet[i], vet[(i+1)%N] = vet[(i+1)%N], vet[i]
+                m = sum(vet[k] * (2**k) for k in range(N))
+                column = v_index[m]
+                H_Sz[row, column] -= J_perp / 2
+
+        # Diagonal J_perp
+        vet = lst_j - 0.5
+        h2 = sum(vet[i] * vet[(i+1)%N] for i in range(0, N, 2))
+        H_Sz[row, row] += J_perp * h2
+
+    return H_Sz.tocsr()
+
+
+
+# ////////////////////////////////////////////////////////////////////////////
+"""
+start_time1 = time.time()
+from scipy.linalg import eigh
 Block_H_Sz = Block_Hamiltonian(v_m_Sz_sorted, list_Sz_fixed_sorted)
+eigenvalues, eigenvectors = eigh(Block_H_Sz)
+print('GS energy',eigenvalues[0])
+end_time1 = time.time()
+elapsed_time1 = end_time1 - start_time1
+print("Elapsed time1:", elapsed_time1)
+"""
 
-
+start_time2 = time.time()
+# With sparse Hamiltonian
+from scipy.sparse.linalg import eigsh
+Block_H_Sz_sparse = Block_Hamiltonian_sparse(v_m_Sz_sorted, list_Sz_fixed_sorted)
+eigenvalues_sparse, eigenvectors_sparse = eigsh(Block_H_Sz_sparse, k=1, which='SA')
+print("GS energy for SPARSE MATRIX", eigenvalues_sparse[0])
+end_time2 = time.time()
+elapsed_time2 = end_time2 - start_time2
+print("Elapsed time2:", elapsed_time2)
 
 
 

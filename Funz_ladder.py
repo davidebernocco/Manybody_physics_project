@@ -18,59 +18,107 @@ theta = 0.2
 J_par = J * math.cos(theta)
 J_perp = J * math.sin(theta)
 
-# 🧠 Define the S^z = 0 basis (bitstrings with N/2 1s and N/2 0s)
-def get_sz0_basis(N):
-    """Return list of basis states with total Sz = 0."""
-    half = N // 2
-    basis = []
-    for bits in combinations(range(N), half):
-        state = 0
-        for b in bits:
-            state |= (1 << b)
-        basis.append(state)
-    return basis
 
-basis = get_sz0_basis(N)
-dim = len(basis)
-index_map = {state: i for i, state in enumerate(basis)}  # state -> index in Sz=0 sector
 
-# Spin operators using bit logic
-def spin_z(state, site):
-    return 0.5 if (state >> site) & 1 else -0.5
-
-def flip_spin(state, i):
-    return state ^ (1 << i)
-
-def build_sz0_hamiltonian(basis, index_map, N, h, J_par, J_perp):
-    H = lil_matrix((len(basis), len(basis)), dtype=complex)
-
-    for idx, state in enumerate(basis):
+"""
+# Hamiltonian for a single chain
+def Block_Hamiltonian(v, lst):
+    d = len(lst)
+    H_Sz = np.zeros((d,d), dtype=np.float32)
+    
+    row = 0
+    column = 0
+    for lst_j in lst:
+        
+        # Off-diagonal part of H_Sz
         for i in range(N):
-            # Magnetic field term
-            H[idx, idx] += -h * spin_z(state, i)
+            if lst_j[i] != lst_j[(i+1)%N]:
+                vet = lst_j.copy()
+                vet[i], vet[(i+1)%N] = vet[(i+1)%N], vet[i]
+                m = 0
+                for k in range(N):
+                    m += vet[k] * (2 ** (k))
+                column = np.where(v == m)[0][0]
+                H_Sz[row, column] -= J/2
+        del vet
+        
+        # Diagonal part of H_Sz
+        vet = lst_j.copy() - 0.5
+        h1 = 0
+        for i in range(N):
+            h1 += vet[i] * vet[(i+1)%N]
+        H_Sz[row, row] += J *  h1
+           
+        row += 1
+    
+    return H_Sz
 
-            # Loop over XX, YY, ZZ terms
-            for coupling, name in [(J_perp, 'rung') if i % 2 == 0 else (J_par, 'leg')]:
-                j = (i + 1 if name == 'rung' else i + 2) % N
 
-                si = (state >> i) & 1
-                sj = (state >> j) & 1
+Block_H_Sz = Block_Hamiltonian(v_m_Sz_sorted, list_Sz_fixed_sorted)
+"""
 
-                # Sz Sz term
-                H[idx, idx] += coupling * (0.25 if si == sj else -0.25)
 
-                # S+ S- and S- S+ terms (flip both)
-                if si != sj:
-                    flipped = state ^ (1 << i) ^ (1 << j)
-                    if flipped in index_map:
-                        jdx = index_map[flipped]
-                        H[idx, jdx] += 0.5 * coupling
-    return H.tocsr()
+# //////////////////////////////
 
-# Build Hamiltonian in Sz=0 sector
-H_sz0 = build_sz0_hamiltonian(basis, index_map, N, h, J_par, J_perp)
 
-# Compute ground state energy
-energy, vectors = eigsh(H_sz0)
-print(f"Ground state energy in Sz=0 sector: {energy[0]:.10f}")
-print(f"Hilbert space size: 2^{N} = {2**N}, Sz=0 sector size = {len(basis)}")
+"""
+def lanczos(H, m, max_iter=500, tol=1e-10):
+    
+    #Lanczos algorithm for approximating the lowest eigenvalue and eigenvector.
+    #- H: Hamiltonian matrix (or sparse matrix)
+    #- m: number of Lanczos iterations
+    #- max_iter: max number of iterations to prevent infinite loop
+    #- tol: tolerance for convergence
+    
+    n = H.shape[0]
+    v = np.ones(n)
+    v /= np.linalg.norm(v)  # Normalize the vector
+
+    V = np.zeros((n, m), dtype=np.float64)  # Matrix to store orthonormal basis
+    alpha = np.zeros(m, dtype=np.float64)  # Diagonal of the tridiagonal matrix
+    beta = np.zeros(m - 1, dtype=np.float64)  # Off-diagonal of the tridiagonal matrix
+
+    V[:, 0] = v  # Initial vector
+    w = H @ v  # Apply H to the initial vector
+    alpha[0] = np.dot(v, w)  # Compute the first diagonal element
+    w -= alpha[0] * v  # Subtract off the diagonal part
+
+    # Main Lanczos iteration loop
+    for j in range(1, m):
+        # Re-orthogonalize w against the previous vectors in V
+        for i in range(j):
+            proj = np.dot(V[:, i], w)
+            w -= proj * V[:, i]
+
+        beta[j - 1] = np.linalg.norm(w)  # Off-diagonal element
+        if beta[j - 1] < tol:
+            print(f'Lanczos converged early at iteration {j}')
+            V = V[:, :j]  # Truncate V to the converged size
+            alpha = alpha[:j]
+            beta = beta[:j - 1]
+            break
+
+        v = w / beta[j - 1]  # Normalize the new vector
+        V[:, j] = v  # Add it to the orthonormal basis
+        w = H @ v  # Apply H to the new vector
+
+        # Re-orthogonalize w again
+        for i in range(j + 1):
+            proj = np.dot(V[:, i], w)
+            w -= proj * V[:, i]
+
+        alpha[j] = np.dot(v, w)  # Diagonal element of the tridiagonal matrix
+
+    # Now, solve for the eigenvalues of the tridiagonal matrix
+    eigs, _ = eigh_tridiagonal(alpha, beta)
+
+    return alpha, beta, V
+
+# Example usage
+from scipy.linalg import eigh_tridiagonal, eigh
+alpha, beta, V = lanczos(Block_H_Sz, 100)  # Try with a higher number of iterations
+eigs, _ = eigh_tridiagonal(alpha, beta)  # solve for the eigenvalues of the tridiagonal matrix
+print('GS energy from Lanczos:', eigs[0])
+
+"""
+
