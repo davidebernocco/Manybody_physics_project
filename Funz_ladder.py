@@ -3,122 +3,114 @@ Self built functions for the study of the Heisemberg S=1/2 model on a ladder
 
 @author: david
 """
+
 import numpy as np
 import math
+import itertools
 from scipy.sparse import lil_matrix
 from scipy.sparse.linalg import eigsh
-from itertools import combinations
-
-# Parameters
-Nr = 6
-N = 2 * Nr
-h = 0.5
-J = 1.0
-theta = 0.2
-J_par = J * math.cos(theta)
-J_perp = J * math.sin(theta)
 
 
 
-"""
-# Hamiltonian for a single chain
-def Block_Hamiltonian(v, lst):
-    d = len(lst)
-    H_Sz = np.zeros((d,d), dtype=np.float32)
-    
-    row = 0
-    column = 0
+def generate_binary_arrays(n, k):
+    num = math.comb(n, k)
+    arrays = np.zeros((num, n), dtype=int)
+    j = 0
+    for ones_positions in itertools.combinations(range(n), k):
+        array = np.zeros(n, dtype=int)
+        for pos in ones_positions:
+            array[pos] += 1
+        arrays[j] = array
+        j +=1
+    return arrays
+
+
+
+def array_of_integers(lst, n):
+    N_Sz = len(lst)
+    v_m = np.zeros(N_Sz, dtype=int)
+    j = 0
     for lst_j in lst:
-        
-        # Off-diagonal part of H_Sz
-        for i in range(N):
-            if lst_j[i] != lst_j[(i+1)%N]:
+        m = 0
+        for i in range(n):
+            m += lst_j[i] * (2 ** (i))
+        v_m[j] += m
+        j += 1
+    return v_m
+
+
+
+def Block_Hamiltonian_sparse(v, lst, n, Jpar, Jperp):
+    d = len(lst)
+    H_Sz = lil_matrix((d, d), dtype=np.float32)
+    
+    v_index = {val: idx for idx, val in enumerate(v)}  # dictionary for fast lookup
+
+    for row, lst_j in enumerate(lst):
+        # Off-diagonal J_par
+        for i in range(n):
+            if lst_j[i] != lst_j[(i+2)%n]:
                 vet = lst_j.copy()
-                vet[i], vet[(i+1)%N] = vet[(i+1)%N], vet[i]
-                m = 0
-                for k in range(N):
-                    m += vet[k] * (2 ** (k))
-                column = np.where(v == m)[0][0]
-                H_Sz[row, column] -= J/2
-        del vet
+                vet[i], vet[(i+2)%n] = vet[(i+2)%n], vet[i]
+                m = sum(vet[k] * (2**k) for k in range(n))
+                column = v_index[m]
+                H_Sz[row, column] -= Jpar / 2
+
+        # Diagonal J_par
+        vet = lst_j - 0.5
+        h1 = sum(vet[i] * vet[(i+2)%n] for i in range(n))
+        H_Sz[row, row] += Jpar * h1
+
+        # Off-diagonal J_perp
+        for i in range(0, n, 2):
+            if lst_j[i] != lst_j[(i+1)%n]:
+                vet = lst_j.copy()
+                vet[i], vet[(i+1)%n] = vet[(i+1)%n], vet[i]
+                m = sum(vet[k] * (2**k) for k in range(n))
+                column = v_index[m]
+                H_Sz[row, column] -= Jperp / 2
+
+        # Diagonal J_perp
+        vet = lst_j - 0.5
+        h2 = sum(vet[i] * vet[(i+1)%n] for i in range(0, n, 2))
+        H_Sz[row, row] += Jperp * h2
+
+    return H_Sz.tocsr()
+
+
+
+def blocks_GS(n, Jpar, Jperp):
+    Sz_fix = np.asarray([i for i in range(int(-n/2), int(n/2) +1)], dtype=int)
+    n_1 = np.asarray([i for i in range(n+1)], dtype=int)
+    dict_Sz = dict(zip(Sz_fix, n_1))
+    d = len(Sz_fix)
+    E_gs = np.zeros(d, dtype=np.float32)
+    
+    j = 0
+    for sz in Sz_fix:
+        if sz == int(-n/2) or sz == int(n/2):
+            # Manually add the energy of the 1x1 sectors of |Sz| max
+            E_gs[j] += np.sign(sz) * (Jpar*n/4 + Jperp*n/8)
+        else:
+            # Generate the arrays associated to the sector Sz = fixed (ex. 0)
+            list_Sz_fixed = generate_binary_arrays(n, dict_Sz[sz])
+            
+            # Convert vectors to integers
+            vett_m_Sz = array_of_integers(list_Sz_fixed, n)
+                    
+            # Zip, sort by v_m_Sz0, and unzip
+            paired = sorted(zip(vett_m_Sz, list_Sz_fixed))      
+            v_m_Sz_sorted, list_Sz_fixed_sorted = zip(*paired)
+            
+            # Convert back to arrays if needed
+            v_m_Sz_sorted = np.asarray(v_m_Sz_sorted, dtype=np.int32)
+            list_Sz_fixed_sorted = np.asarray(list_Sz_fixed_sorted)
+                    
+            Block_H_Sz_sparse = Block_Hamiltonian_sparse(v_m_Sz_sorted, list_Sz_fixed_sorted, n, Jpar, Jperp)
+            eigenvalues_sparse, _ = eigsh(Block_H_Sz_sparse, k=1, which='SA')
+            
+            E_gs[j] += eigenvalues_sparse[0]
+        j += 1
         
-        # Diagonal part of H_Sz
-        vet = lst_j.copy() - 0.5
-        h1 = 0
-        for i in range(N):
-            h1 += vet[i] * vet[(i+1)%N]
-        H_Sz[row, row] += J *  h1
-           
-        row += 1
-    
-    return H_Sz
-
-
-Block_H_Sz = Block_Hamiltonian(v_m_Sz_sorted, list_Sz_fixed_sorted)
-"""
-
-
-# //////////////////////////////
-
-
-"""
-def lanczos(H, m, max_iter=500, tol=1e-10):
-    
-    #Lanczos algorithm for approximating the lowest eigenvalue and eigenvector.
-    #- H: Hamiltonian matrix (or sparse matrix)
-    #- m: number of Lanczos iterations
-    #- max_iter: max number of iterations to prevent infinite loop
-    #- tol: tolerance for convergence
-    
-    n = H.shape[0]
-    v = np.ones(n)
-    v /= np.linalg.norm(v)  # Normalize the vector
-
-    V = np.zeros((n, m), dtype=np.float64)  # Matrix to store orthonormal basis
-    alpha = np.zeros(m, dtype=np.float64)  # Diagonal of the tridiagonal matrix
-    beta = np.zeros(m - 1, dtype=np.float64)  # Off-diagonal of the tridiagonal matrix
-
-    V[:, 0] = v  # Initial vector
-    w = H @ v  # Apply H to the initial vector
-    alpha[0] = np.dot(v, w)  # Compute the first diagonal element
-    w -= alpha[0] * v  # Subtract off the diagonal part
-
-    # Main Lanczos iteration loop
-    for j in range(1, m):
-        # Re-orthogonalize w against the previous vectors in V
-        for i in range(j):
-            proj = np.dot(V[:, i], w)
-            w -= proj * V[:, i]
-
-        beta[j - 1] = np.linalg.norm(w)  # Off-diagonal element
-        if beta[j - 1] < tol:
-            print(f'Lanczos converged early at iteration {j}')
-            V = V[:, :j]  # Truncate V to the converged size
-            alpha = alpha[:j]
-            beta = beta[:j - 1]
-            break
-
-        v = w / beta[j - 1]  # Normalize the new vector
-        V[:, j] = v  # Add it to the orthonormal basis
-        w = H @ v  # Apply H to the new vector
-
-        # Re-orthogonalize w again
-        for i in range(j + 1):
-            proj = np.dot(V[:, i], w)
-            w -= proj * V[:, i]
-
-        alpha[j] = np.dot(v, w)  # Diagonal element of the tridiagonal matrix
-
-    # Now, solve for the eigenvalues of the tridiagonal matrix
-    eigs, _ = eigh_tridiagonal(alpha, beta)
-
-    return alpha, beta, V
-
-# Example usage
-from scipy.linalg import eigh_tridiagonal, eigh
-alpha, beta, V = lanczos(Block_H_Sz, 100)  # Try with a higher number of iterations
-eigs, _ = eigh_tridiagonal(alpha, beta)  # solve for the eigenvalues of the tridiagonal matrix
-print('GS energy from Lanczos:', eigs[0])
-
-"""
+    return E_gs
 
