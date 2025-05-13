@@ -114,3 +114,16 @@ def blocks_GS(n, Jpar, Jperp):
         
     return E_gs
 
+
+
+def magnetisation(autov):
+    n_inters = int((len(autov)-1)//2)
+    h_arr = np.zeros(n_inters, dtype=np.float32)
+    m_arr = np.zeros(n_inters, dtype=np.float32)
+    x = 0
+    for i in range(n_inters, len(autov)-1, 1):
+        x = autov[i+1] - autov[i]
+        h_arr[i-n_inters] += x
+        m_arr[i-n_inters] += i-n_inters
+    return h_arr, m_arr
+
