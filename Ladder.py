@@ -20,7 +20,7 @@ from scipy.sparse.linalg import eigsh
 from Funz_ladder import generate_binary_arrays, array_of_integers
 from Funz_ladder import Block_Hamiltonian_sparse, blocks_GS, magnetisation
 
-
+"""
 Nr = 5    # Number of ladder rungs
 N = 2*Nr  # Total number of sites on the ladder
 
@@ -30,7 +30,7 @@ J = 1
 th = 0.5
 J_par = J*math.cos(th)
 J_perp = J*math.sin(th)
-
+"""
 
 
 # -----------------------------------------------------------------------------

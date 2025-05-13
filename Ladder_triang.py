@@ -1,46 +1,40 @@
 """
-Self built functions for the study of the Heisemberg S=1/2 model on a ladder
+Heisemberg S=1/2 model on a TRIANGULAR ladder.
+(PBC on the two parallel legs "==")
+
+      1==3==5==7==9      "==" : J_parallel = J*cos(theta)
+     / \/ \/ \/ \/      " | " : J_perpendicular = J*sin(theta)
+    0==2==4==6==8
+
+
+The Hilbert space associated to the full system is (C^2)tensor(C^2)...(C^2)
 
 @author: david
 """
 
 import numpy as np
 import math
-import itertools
 from scipy.sparse import lil_matrix
+
+from Funz_ladder import generate_binary_arrays, array_of_integers
+from Funz_ladder import Block_Hamiltonian_sparse, magnetisation
 from scipy.sparse.linalg import eigsh
 
 
 
-def generate_binary_arrays(n, k):
-    num = math.comb(n, k)
-    arrays = np.zeros((num, n), dtype=int)
-    j = 0
-    for ones_positions in itertools.combinations(range(n), k):
-        array = np.zeros(n, dtype=int)
-        for pos in ones_positions:
-            array[pos] += 1
-        arrays[j] = array
-        j +=1
-    return arrays
+Nr = 6    # Number of ladder rungs
+N = 2*Nr  # Total number of sites on the ladder
+
+# Interaction parameters
+h = 0
+J = 1                 
+th = 1.5
+J_par = J*math.cos(th)
+J_perp = J*math.sin(th)
 
 
 
-def array_of_integers(lst, n):
-    N_Sz = len(lst)
-    v_m = np.zeros(N_Sz, dtype=int)
-    j = 0
-    for lst_j in lst:
-        m = 0
-        for i in range(n):
-            m += lst_j[i] * (2 ** (i))
-        v_m[j] += m
-        j += 1
-    return v_m
-
-
-
-def Block_Hamiltonian_sparse(v, lst, n, Jpar, Jperp):
+def Block_Hamiltonian_sparse_TR(v, lst, n, Jpar, Jperp):
     d = len(lst)
     H_Sz = lil_matrix((d, d), dtype=np.float32)
     
@@ -62,24 +56,25 @@ def Block_Hamiltonian_sparse(v, lst, n, Jpar, Jperp):
         H_Sz[row, row] += Jpar * h1
 
         # Off-diagonal J_perp
-        for i in range(0, n, 2):
-            if lst_j[i] != lst_j[(i+1)]:
+        for i in range(n):
+            if lst_j[i] != lst_j[(i+1)%n]:
                 vet = lst_j.copy()
-                vet[i], vet[(i+1)] = vet[(i+1)], vet[i]
+                vet[i], vet[(i+1)%n] = vet[(i+1)%n], vet[i]
                 m = sum(vet[k] * (2**k) for k in range(n))
                 column = v_index[m]
                 H_Sz[row, column] -= Jperp / 2
 
         # Diagonal J_perp
         vet = lst_j - 0.5
-        h2 = sum(vet[i] * vet[(i+1)] for i in range(0, n, 2))
+        h2 = sum(vet[i] * vet[(i+1)%n] for i in range(n))
         H_Sz[row, row] += Jperp * h2
 
     return H_Sz.tocsr()
 
 
 
-def blocks_GS(n, Jpar, Jperp):
+
+def blocks_GS_TR(n, Jpar, Jperp):
     Sz_fix = np.asarray([i for i in range(int(-n/2), int(n/2) +1)], dtype=int)
     n_1 = np.asarray([i for i in range(n+1)], dtype=int)
     dict_Sz = dict(zip(Sz_fix, n_1))
@@ -106,7 +101,7 @@ def blocks_GS(n, Jpar, Jperp):
             v_m_Sz_sorted = np.asarray(v_m_Sz_sorted, dtype=np.int32)
             list_Sz_fixed_sorted = np.asarray(list_Sz_fixed_sorted)
                     
-            Block_H_Sz_sparse = Block_Hamiltonian_sparse(v_m_Sz_sorted, list_Sz_fixed_sorted, n, Jpar, Jperp)
+            Block_H_Sz_sparse = Block_Hamiltonian_sparse_TR(v_m_Sz_sorted, list_Sz_fixed_sorted, n, Jpar, Jperp)
             eigenvalues_sparse, _ = eigsh(Block_H_Sz_sparse, k=1, which='SA')
             
             E_gs[j] += eigenvalues_sparse[0]
@@ -116,14 +111,26 @@ def blocks_GS(n, Jpar, Jperp):
 
 
 
-def magnetisation(autov):
-    n_inters = int((len(autov)-1)//2)
-    h_arr = np.zeros(n_inters, dtype=np.float32)
-    m_arr = np.zeros(n_inters, dtype=np.float32)
-    x = 0
-    for i in range(n_inters, len(autov)-1, 1):
-        x = autov[i+1] - autov[i]
-        h_arr[i-n_inters] += x
-        m_arr[i-n_inters] += i-n_inters
-    return h_arr, m_arr
+autovalori = blocks_GS_TR(N, J_par, J_perp)
 
+
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.rcParams['text.usetex'] = False
+
+# Discontinuity points (edges of steps)
+x_steps, y_heights = magnetisation(autovalori)
+
+
+x_plot = np.insert(x_steps, 0, 0)  
+y_plot = y_heights              
+y_plot =  np.append(y_plot, y_plot[-1])  
+
+
+# Plot of step function
+fig_m, ax_m = plt.subplots(figsize=(6.2, 4.5))
+ax_m.step(x_plot, y_plot, where='post')
+ax_m.set_xlabel(r'$ h $', fontsize=15)
+ax_m.set_ylabel(r'$ m $', fontsize=15)
+ax_m.grid(True)
+plt.show()
