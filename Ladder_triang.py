@@ -28,7 +28,7 @@ N = 2*Nr  # Total number of sites on the ladder
 # Interaction parameters
 h = 0
 J = 1                 
-th = 1.5
+th = 0
 J_par = J*math.cos(th)
 J_perp = J*math.sin(th)
 

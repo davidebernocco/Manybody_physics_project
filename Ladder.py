@@ -148,7 +148,7 @@ def multiple_plot(n_min, n_max, param_h, param_J, param_th ):
     plt.show()
 
 
-justapposed_plots = multiple_plot(3, 6, 0, 1, 0.5)
+justapposed_plots = multiple_plot(3, 6, 0, 1, 0)
 
 
 
