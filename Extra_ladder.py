@@ -429,63 +429,49 @@ def sparse_matvec(H, row, col, v):
 
     for h, r, c in zip(H, row, col):
         w[r] += h * v[c]
-        if r != c:
-            w[c] += h * v[r]
-
+        
     return w
 
+
+
+
 def lanczos(sp_H, sp_row, sp_col, m):
-    n = sp_row[-1]+1
-    v = np.random.randn(n) 
-    v = v / np.linalg.norm(v)
+    n = sp_row[-1] + 1
+    v = np.random.randn(n)
+    v /= np.linalg.norm(v)
 
     V = np.zeros((n, m), dtype=np.float64)
     alpha = np.zeros(m, dtype=np.float64)
     beta = np.zeros(m - 1, dtype=np.float64)
 
     V[:, 0] = v
-    
-    w = sparse_matvec(sp_H,sp_row, sp_col, v) # = H @ v
-    
+    w = sparse_matvec(sp_H, sp_row, sp_col, v)
     alpha[0] = np.dot(v, w)
-    w = w - alpha[0] * v
+    w -= alpha[0] * v  # First orthogonalization step
 
     for j in range(1, m):
-        # Full reorthogonalization
-        for i in range(j):
-            proj = np.dot(V[:, i], w)
-            w -= proj * V[:, i]
-
         beta[j - 1] = np.linalg.norm(w)
-        if beta[j - 1] < 1e-12:
-            V = V[:, :j]
-            alpha = alpha[:j]
-            beta = beta[:j - 1]
-            break
 
         v = w / beta[j - 1]
         V[:, j] = v
-        w = sparse_matvec(sp_H,sp_row, sp_col, v)
-        """
-        # Reorthogonalize
-        for i in range(j + 1):
-            proj = np.dot(V[:, i], w)
-            w -= proj * V[:, i]
-        """
+
+        w = sparse_matvec(sp_H, sp_row, sp_col, v)
+        w -= beta[j - 1] * V[:, j - 1]  # Subtract previous component
         alpha[j] = np.dot(v, w)
-        
+        w -= alpha[j] * v          # Subtract current component
+
     eigs, _ = eigh_tridiagonal(alpha, beta)
     gs_energy = eigs[0]
 
     return gs_energy
 
 
-GS_lanczos = lanczos(sparse_H, sparse_row, sparse_col, 20)
+GS_lanczos = lanczos(sparse_H, sparse_row, sparse_col, 64)
 print("GS energy from LANCZOS", GS_lanczos)
 
 
 from Funz_ladder import Block_Hamiltonian_sparse
 Block_H_Sz_sparse = Block_Hamiltonian_sparse(v_m_Sz_sorted, list_Sz_fixed_sorted, N, J_par, J_perp)
-eigenvalues_sparse, eigenvectors_sparse = eigsh(Block_H_Sz_sparse, k=1, which='SA')
+eigenvalues_sparse, _ = eigsh(Block_H_Sz_sparse, k=1, which='SA')
 print("GS energy for SPARSE MATRIX", eigenvalues_sparse[0])
 
