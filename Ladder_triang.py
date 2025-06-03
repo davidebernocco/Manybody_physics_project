@@ -22,13 +22,13 @@ from scipy.sparse.linalg import eigsh
 
 
 
-Nr = 6    # Number of ladder rungs
+Nr = 4    # Number of ladder rungs
 N = 2*Nr  # Total number of sites on the ladder
 
 # Interaction parameters
 h = 0
 J = 1                 
-th = 0
+th = math.pi / 2
 J_par = J*math.cos(th)
 J_perp = J*math.sin(th)
 
@@ -123,7 +123,7 @@ x_steps, y_heights = magnetisation(autovalori)
 
 
 x_plot = np.insert(x_steps, 0, 0)  
-y_plot = y_heights              
+y_plot = y_heights / Nr  # NORMALIZE by magnetization max (= n°sites/2)
 y_plot =  np.append(y_plot, y_plot[-1])  
 
 

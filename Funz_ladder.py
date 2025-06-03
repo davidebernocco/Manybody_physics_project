@@ -92,7 +92,7 @@ def blocks_GS(n, Jpar, Jperp):
             # Manually add the energy of the 1x1 sectors of |Sz| max
             E_gs[j] += np.sign(sz) * (Jpar*n/4 + Jperp*n/8)
         else:
-            # Generate the arrays associated to the sector Sz = fixed (ex. 0)
+            # Generate the arrays associated to the sector Sz = fixed
             list_Sz_fixed = generate_binary_arrays(n, dict_Sz[sz])
             
             # Convert vectors to integers
