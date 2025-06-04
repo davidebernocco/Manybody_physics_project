@@ -15,6 +15,7 @@ The Hilbert space associated to the full system is (C^2)tensor(C^2)...(C^2)
 import numpy as np
 import math
 from scipy.sparse import lil_matrix
+from scipy.linalg import eigh
 
 from Funz_ladder import generate_binary_arrays, array_of_integers
 from Funz_ladder import Block_Hamiltonian_sparse, magnetisation
@@ -28,7 +29,7 @@ N = 2*Nr  # Total number of sites on the ladder
 # Interaction parameters
 h = 0
 J = 1                 
-th = math.pi / 2
+th = math.pi/2
 J_par = J*math.cos(th)
 J_perp = J*math.sin(th)
 
@@ -71,6 +72,33 @@ def Block_Hamiltonian_sparse_TR(v, lst, n, Jpar, Jperp):
 
     return H_Sz.tocsr()
 
+"""
+Sz_fix_TR = np.asarray([i for i in range(int(-N/2), int(N/2) +1)], dtype=int)
+N_1_TR = np.asarray([i for i in range(N+1)], dtype=int)
+dict_Sz_TR = dict(zip(Sz_fix_TR, N_1_TR))
+
+# Generate the arrays associated to the sector Sz = fixed
+list_Sz_fixed_TR = generate_binary_arrays(N, dict_Sz_TR[0])
+
+vett_m_Sz_TR = array_of_integers(list_Sz_fixed_TR, N)
+
+# Zip, sort by v_m_Sz0, and unzip
+paired_TR = sorted(zip(vett_m_Sz_TR, list_Sz_fixed_TR))      
+v_m_Sz_sorted_TR, list_Sz_fixed_sorted_TR = zip(*paired_TR)
+
+# Convert back to arrays if needed
+v_m_Sz_sorted_TR = np.asarray(v_m_Sz_sorted_TR, dtype=np.int32)
+list_Sz_fixed_sorted_TR = np.asarray(list_Sz_fixed_sorted_TR)
+
+# Sparse Hamiltonian
+Block_H_Sz_sparse_TR = Block_Hamiltonian_sparse_TR(v_m_Sz_sorted_TR, list_Sz_fixed_sorted_TR, N, J_par, J_perp)
+
+# Convert to dense
+A_dense_TR = Block_H_Sz_sparse_TR.toarray()   
+
+# Compute all eigenvalues (interesting for the degeneracy)
+eigenvalues_TR, _ = eigh(A_dense_TR)
+"""
 
 
 
@@ -85,7 +113,7 @@ def blocks_GS_TR(n, Jpar, Jperp):
     for sz in Sz_fix:
         if sz == int(-n/2) or sz == int(n/2):
             # Manually add the energy of the 1x1 sectors of |Sz| max
-            E_gs[j] += np.sign(sz) * (Jpar*n/4 + Jperp*n/8)
+            E_gs[j] += np.sign(sz) * (Jpar*n/4 + Jperp*n/4)
         else:
             # Generate the arrays associated to the sector Sz = fixed (ex. 0)
             list_Sz_fixed = generate_binary_arrays(n, dict_Sz[sz])
@@ -134,3 +162,8 @@ ax_m.set_xlabel(r'$ h $', fontsize=15)
 ax_m.set_ylabel(r'$ m $', fontsize=15)
 ax_m.grid(True)
 plt.show()
+
+
+
+
+

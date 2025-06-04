@@ -22,13 +22,13 @@ from Funz_ladder import generate_binary_arrays, array_of_integers
 from Funz_ladder import Block_Hamiltonian_sparse, blocks_GS, magnetisation
 
 
-Nr = 4    # Number of ladder rungs
+Nr = 8    # Number of ladder rungs
 N = 2*Nr  # Total number of sites on the ladder
 
 # Interaction parameters
 h = 0
 J = 1                 
-th = math.pi/2 - 0.1
+th = 0
 J_par = J*math.cos(th)
 J_perp = J*math.sin(th)
 
@@ -39,7 +39,7 @@ J_perp = J*math.sin(th)
 #      hopping into void neighbours (singlets)
 # -----------------------------------------------------------------------------
 
-
+"""
 Sz_fix = np.asarray([i for i in range(int(-N/2), int(N/2) +1)], dtype=int)
 N_1 = np.asarray([i for i in range(N+1)], dtype=int)
 dict_Sz = dict(zip(Sz_fix, N_1))
@@ -130,20 +130,23 @@ def Hopping_check(lst, dictionary):
 
 Ham_eff = Hopping_check(selected_rows, vet_tr)
 print(Ham_eff)
+"""
+
+
 
 # -----------------------------------------------------------------------------
 # 2) On the degeneracy of levels vs theta
 # -----------------------------------------------------------------------------
 
 
-"""
+
 
 Sz_fix = np.asarray([i for i in range(int(-N/2), int(N/2) +1)], dtype=int)
 N_1 = np.asarray([i for i in range(N+1)], dtype=int)
 dict_Sz = dict(zip(Sz_fix, N_1))
 
 # Generate the arrays associated to the sector Sz = fixed
-list_Sz_fixed = generate_binary_arrays(N, dict_Sz[1])
+list_Sz_fixed = generate_binary_arrays(N, dict_Sz[7])
 
 vett_m_Sz = array_of_integers(list_Sz_fixed, N)
 
@@ -161,10 +164,9 @@ Block_H_Sz_sparse = Block_Hamiltonian_sparse(v_m_Sz_sorted, list_Sz_fixed_sorted
      
 # Convert to dense
 A_dense = Block_H_Sz_sparse.toarray()   
-
 # Compute all eigenvalues (interesting for the degeneracy)
 eigenvalues, _ = eigh(A_dense)
-"""
+
 
 
 """
