@@ -22,13 +22,13 @@ from Funz_ladder import generate_binary_arrays, array_of_integers
 from Funz_ladder import Block_Hamiltonian_sparse, blocks_GS, magnetisation
 
 
-Nr = 8    # Number of ladder rungs
+Nr = 4    # Number of ladder rungs
 N = 2*Nr  # Total number of sites on the ladder
 
 # Interaction parameters
 h = 0
 J = 1                 
-th = 0
+th = math.pi / 2 - 0.1
 J_par = J*math.cos(th)
 J_perp = J*math.sin(th)
 
@@ -140,13 +140,13 @@ print(Ham_eff)
 
 
 
-
+"""
 Sz_fix = np.asarray([i for i in range(int(-N/2), int(N/2) +1)], dtype=int)
 N_1 = np.asarray([i for i in range(N+1)], dtype=int)
 dict_Sz = dict(zip(Sz_fix, N_1))
 
 # Generate the arrays associated to the sector Sz = fixed
-list_Sz_fixed = generate_binary_arrays(N, dict_Sz[7])
+list_Sz_fixed = generate_binary_arrays(N, dict_Sz[0])
 
 vett_m_Sz = array_of_integers(list_Sz_fixed, N)
 
@@ -166,6 +166,128 @@ Block_H_Sz_sparse = Block_Hamiltonian_sparse(v_m_Sz_sorted, list_Sz_fixed_sorted
 A_dense = Block_H_Sz_sparse.toarray()   
 # Compute all eigenvalues (interesting for the degeneracy)
 eigenvalues, _ = eigh(A_dense)
+"""
+
+# ----------------------------
+
+"""
+import matplotlib.pyplot as plt
+
+# Example energy levels
+energies = [1, 2, 3.5, 5, 6.8]  # y-values where lines are placed
+line_length = 1.0               # Length of horizontal lines
+x_center = 0                    # Horizontal center of the lines
+
+# Create figure
+plt.figure(figsize=(4, 6))
+
+# Plot horizontal lines
+for energy in energies:
+    x_start = x_center - line_length / 2
+    x_end = x_center + line_length / 2
+    plt.hlines(energy, x_start, x_end, color='black', linewidth=1)
+
+# Remove x-axis and frame
+plt.xticks([])
+plt.gca().spines['bottom'].set_visible(False)
+plt.gca().spines['top'].set_visible(False)
+
+# Label y-axis
+plt.ylabel("Energy")
+plt.title("Energy Level Diagram")
+
+# Optional: invert y-axis to show low energy at bottom
+plt.gca().invert_yaxis()
+
+plt.tight_layout()
+plt.show()
+"""
+
+
+
+
+def iteration(n,th_min,th_max,d_th,sz):
+    lista = []
+    for t in np.arange(th_min, th_max + d_th, d_th):
+        param_Jpar = J*math.cos(t)
+        param_Jperp = J*math.sin(t)
+        Sz_fix = np.asarray([i for i in range(int(-n/2), int(n/2) +1)], dtype=int)
+        N_1 = np.asarray([i for i in range(n+1)], dtype=int)
+        dict_Sz = dict(zip(Sz_fix, N_1))
+    
+        # Generate the arrays associated to the sector Sz = fixed
+        list_Sz_fixed = generate_binary_arrays(n, dict_Sz[sz])
+    
+        vett_m_Sz = array_of_integers(list_Sz_fixed, n)
+    
+        # Zip, sort by v_m_Sz0, and unzip
+        paired = sorted(zip(vett_m_Sz, list_Sz_fixed))      
+        v_m_Sz_sorted, list_Sz_fixed_sorted = zip(*paired)
+    
+        # Convert back to arrays if needed
+        v_m_Sz_sorted = np.asarray(v_m_Sz_sorted, dtype=np.int32)
+        list_Sz_fixed_sorted = np.asarray(list_Sz_fixed_sorted)
+    
+    
+        # Sparse Hamiltonian
+        Block_H_Sz_sparse = Block_Hamiltonian_sparse(v_m_Sz_sorted, list_Sz_fixed_sorted, n, param_Jpar, param_Jperp)
+             
+        # Convert to dense
+        A_dense = Block_H_Sz_sparse.toarray()   
+        # Compute all eigenvalues (interesting for the degeneracy)
+        eigenv, _ = eigh(A_dense)
+        
+        lista.append(eigenv)
+        
+    return lista
+
+
+t_m, t_M, d_t = 0, math.pi/2, math.pi/8
+risultato = iteration(8, t_m, t_M, d_t, 0)
+
+
+
+import matplotlib.pyplot as plt
+
+# Energy spectra for different coupling values
+energy_spectra = risultato
+
+coupling_labels = [fr'$\theta={t:.2f}$' for t in np.arange(t_m, t_M + d_t, d_t)]
+
+# X positions for each spectrum
+num_columns = len(energy_spectra)
+x_positions = range(-num_columns//2, num_columns//2 + 1)
+
+# Get default color cycle
+colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+# Plotting parameters
+line_length = 1.0
+
+# Determine lowest energy for label alignment
+all_energies = [e for spectrum in energy_spectra for e in spectrum]
+min_energy = min(all_energies)
+
+plt.figure(figsize=(8, 8))
+
+# Plot each spectrum
+for i, (energies, x) in enumerate(zip(energy_spectra, x_positions)):
+    color = colors[i % len(colors)]
+    for energy in energies:
+        plt.hlines(energy, x - line_length/2, x + line_length/2,
+                   color=color, linewidth=1)
+    
+    # Place label below lowest level, centered in column
+    plt.text(x, min_energy - 0.5, coupling_labels[i],
+             ha='center', va='top', fontsize=10, fontweight='bold', color='black')#=color)
+
+# Format plot
+plt.xticks([])
+plt.gca().spines['bottom'].set_visible(False)
+plt.gca().spines['top'].set_visible(False)
+
+plt.ylabel("Energy")
+plt.title("Energy Spectra for Varying Coupling Strengths")
 
 
 

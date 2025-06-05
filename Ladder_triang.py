@@ -23,7 +23,7 @@ from scipy.sparse.linalg import eigsh
 
 
 
-Nr = 4    # Number of ladder rungs
+Nr = 6    # Number of ladder rungs
 N = 2*Nr  # Total number of sites on the ladder
 
 # Interaction parameters
@@ -157,13 +157,52 @@ y_plot =  np.append(y_plot, y_plot[-1])
 
 # Plot of step function
 fig_m, ax_m = plt.subplots(figsize=(6.2, 4.5))
-ax_m.step(x_plot, y_plot, where='post')
+ax_m.step(x_plot, y_plot, where='post', label=f'{Nr} rungs ')
 ax_m.set_xlabel(r'$ h $', fontsize=15)
 ax_m.set_ylabel(r'$ m $', fontsize=15)
+ax_m.set_title(fr'Magnetization for ladder Hamiltonian ($J={J:.2f}$, $\theta={th:.2f}$)')
+ax_m.legend(loc='upper left')
 ax_m.grid(True)
 plt.show()
 
 
 
 
+# -----------------------------------------------------------------------------
+# 5) Size scaling at fixed interaction parameters
+# -----------------------------------------------------------------------------
+"""
+def multiple_plot(n_min, n_max, param_h, param_J, param_th ):
+   
+    # Interaction parameters
+    param_J_par = param_J * math.cos(param_th)
+    param_J_perp = param_J * math.sin(param_th)
+    
+    fig_m, ax_m = plt.subplots(figsize=(6.2, 4.5))
+    
+    for i in range(n_min, n_max+1, 2):
+        Num = 2*i  # Total number of sites on the ladder
+        autovalori = blocks_GS_TR(Num, param_J_par, param_J_perp)
+        
+        # Discontinuity points (edges of steps)
+        x_steps, y_heights = magnetisation(autovalori)
 
+
+        x_plot = np.insert(x_steps, 0, 0)  
+        y_plot = y_heights / i   # NORMALIZE by magnetization max (= n°sites/2)           
+        y_plot =  np.append(y_plot, y_plot[-1])  
+
+
+        # Plot of step function
+        
+        ax_m.step(x_plot, y_plot, where='post', label=f'{i} rungs ')
+    ax_m.set_xlabel(r'$ h $', fontsize=15)
+    ax_m.set_ylabel(r'$ m $', fontsize=15)
+    ax_m.set_title(fr'Magnetization for ladder Hamiltonian ($J={param_J:.2f}$, $\theta={param_th:.2f}$)')
+    ax_m.legend(loc='upper left')
+    ax_m.grid(True)
+    plt.show()
+
+
+justapposed_plots_TR = multiple_plot(2, 8, 0, 1, 0)
+"""
