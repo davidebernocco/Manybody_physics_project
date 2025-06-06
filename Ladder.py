@@ -14,9 +14,8 @@ The Hilbert space associated to the full system is (C^2)tensor(C^2)...(C^2)
 
 import numpy as np
 import math
-import time
-from scipy.sparse.linalg import eigsh
 from scipy.linalg import eigh
+import matplotlib.pyplot as plt
 
 from Funz_ladder import generate_binary_arrays, array_of_integers
 from Funz_ladder import Block_Hamiltonian_sparse, blocks_GS, magnetisation
@@ -28,18 +27,19 @@ N = 2*Nr  # Total number of sites on the ladder
 # Interaction parameters
 h = 0
 J = 1                 
-th = math.pi / 2 - 0.1
+th = math.pi/2
 J_par = J*math.cos(th)
 J_perp = J*math.sin(th)
 
 
 
+
 # -----------------------------------------------------------------------------
 # 1)  Ladder Hamiltonian as EFFECTIVE HAMILTONIAN of a bosonic particle (triplet)
-#      hopping into void neighbours (singlets)
+#     hopping into void neighbours (singlets)
 # -----------------------------------------------------------------------------
 
-"""
+
 Sz_fix = np.asarray([i for i in range(int(-N/2), int(N/2) +1)], dtype=int)
 N_1 = np.asarray([i for i in range(N+1)], dtype=int)
 dict_Sz = dict(zip(Sz_fix, N_1))
@@ -59,9 +59,10 @@ list_Sz_fixed_sorted = np.asarray(list_Sz_fixed_sorted)
 
 
 
-
-
-def triplet(list_Sz, list_m, n_tr):
+# Takes all the binary configurations associated to a specific Sz sector of the Ham
+# and returns a dictionary of the configurations(through their m) with n_tr 
+# number of triplets (dimers (1,1) or (0,0)) among the singlets (dimers (1,0) or (0,1))
+def triplet_position(list_Sz, list_m, n_tr):
     tr_dict = {}
     d = len(list_Sz_fixed_sorted[0])
     for k in range(len(list_Sz)):
@@ -78,15 +79,12 @@ def triplet(list_Sz, list_m, n_tr):
     return tr_dict
             
             
-        
-vet_tr = triplet(list_Sz_fixed_sorted, v_m_Sz_sorted, 1)
-
-
+# Configurations with n_tr triplets (tipically 1)      
+vet_tr = triplet_position(list_Sz_fixed_sorted, v_m_Sz_sorted, 1)
 
 keys_list = list(vet_tr.keys())
 values_list = list(vet_tr.values())
 
-# Suppose you already have this list (subset of v)
 picked_values = keys_list
 
 # Get indices of these values in v
@@ -97,6 +95,16 @@ selected_rows = list_Sz_fixed_sorted[indices]
 
 
 
+# Takes all the configurations with fixed n_tr number of triplets and returns 
+# the m of the configurations with the n_tr triplets hopped with respect to the
+# starting arrays because of the presence of the J_par interaction.
+# Ex:
+#     1==0==0==0==0==0      
+# =>  |  |  |  |  |  |     equiv to    T==S==S==S==S==S
+#     1==1==1==1==1==1
+#
+# =>  Ladder_Hamiltonian   equiv to    Eff_Hamiltonian that makes Triplets hop
+#
 def Hopping_check(lst, dictionary):
     n = len(lst[0])
     keys_list = list(dictionary.keys())
@@ -121,7 +129,7 @@ def Hopping_check(lst, dictionary):
                 m = sum(vet[k] * (2**k) for k in range(n))
                 lst_m.append(m)
         my_dict['m after hopping'].append(lst_m)
-        moment_dict = triplet(lst_conf, lst_m, 1)
+        moment_dict = triplet_position(lst_conf, lst_m, 1)
         lst_pos = [item for sublist in moment_dict.values() for item in sublist]
         my_dict['new triplet position'].append(lst_pos)
 
@@ -130,82 +138,18 @@ def Hopping_check(lst, dictionary):
 
 Ham_eff = Hopping_check(selected_rows, vet_tr)
 print(Ham_eff)
-"""
+
+
 
 
 
 # -----------------------------------------------------------------------------
-# 2) On the degeneracy of levels vs theta
+# 2) DEGENERACY and GAP of energy eigenvalues vs interacting param theta
 # -----------------------------------------------------------------------------
 
 
-
-"""
-Sz_fix = np.asarray([i for i in range(int(-N/2), int(N/2) +1)], dtype=int)
-N_1 = np.asarray([i for i in range(N+1)], dtype=int)
-dict_Sz = dict(zip(Sz_fix, N_1))
-
-# Generate the arrays associated to the sector Sz = fixed
-list_Sz_fixed = generate_binary_arrays(N, dict_Sz[0])
-
-vett_m_Sz = array_of_integers(list_Sz_fixed, N)
-
-# Zip, sort by v_m_Sz0, and unzip
-paired = sorted(zip(vett_m_Sz, list_Sz_fixed))      
-v_m_Sz_sorted, list_Sz_fixed_sorted = zip(*paired)
-
-# Convert back to arrays if needed
-v_m_Sz_sorted = np.asarray(v_m_Sz_sorted, dtype=np.int32)
-list_Sz_fixed_sorted = np.asarray(list_Sz_fixed_sorted)
-
-
-# Sparse Hamiltonian
-Block_H_Sz_sparse = Block_Hamiltonian_sparse(v_m_Sz_sorted, list_Sz_fixed_sorted, N, J_par, J_perp)
-     
-# Convert to dense
-A_dense = Block_H_Sz_sparse.toarray()   
-# Compute all eigenvalues (interesting for the degeneracy)
-eigenvalues, _ = eigh(A_dense)
-"""
-
-# ----------------------------
-
-"""
-import matplotlib.pyplot as plt
-
-# Example energy levels
-energies = [1, 2, 3.5, 5, 6.8]  # y-values where lines are placed
-line_length = 1.0               # Length of horizontal lines
-x_center = 0                    # Horizontal center of the lines
-
-# Create figure
-plt.figure(figsize=(4, 6))
-
-# Plot horizontal lines
-for energy in energies:
-    x_start = x_center - line_length / 2
-    x_end = x_center + line_length / 2
-    plt.hlines(energy, x_start, x_end, color='black', linewidth=1)
-
-# Remove x-axis and frame
-plt.xticks([])
-plt.gca().spines['bottom'].set_visible(False)
-plt.gca().spines['top'].set_visible(False)
-
-# Label y-axis
-plt.ylabel("Energy")
-plt.title("Energy Level Diagram")
-
-# Optional: invert y-axis to show low energy at bottom
-plt.gca().invert_yaxis()
-
-plt.tight_layout()
-plt.show()
-"""
-
-
-
-
+# Given a fixed system size and Sz, computes all the eigenvalues of that specific
+# hamiltonian  sector, looping on different values of interacting parameter theta
 def iteration(n,th_min,th_max,d_th,sz):
     lista = []
     for t in np.arange(th_min, th_max + d_th, d_th):
@@ -243,14 +187,12 @@ def iteration(n,th_min,th_max,d_th,sz):
 
 
 t_m, t_M, d_t = 0, math.pi/2, math.pi/8
-risultato = iteration(8, t_m, t_M, d_t, 0)
+eigen_lst = iteration(8, t_m, t_M, d_t, 0)
 
 
-
-import matplotlib.pyplot as plt
 
 # Energy spectra for different coupling values
-energy_spectra = risultato
+energy_spectra = eigen_lst
 
 coupling_labels = [fr'$\theta={t:.2f}$' for t in np.arange(t_m, t_M + d_t, d_t)]
 
@@ -291,41 +233,21 @@ plt.title("Energy Spectra for Varying Coupling Strengths")
 
 
 
-"""
-start_time2 = time.time()
-eigenvalues_sparse, _ = eigsh(Block_H_Sz_sparse, which='SA')
-print("GS energy for SPARSE MATRIX", eigenvalues_sparse[0])
-end_time2 = time.time()
-elapsed_time2 = end_time2 - start_time2
-print("Elapsed time2:", elapsed_time2)
-
-# ////////////////////////////////////////////////////////////////////////////
-
 
 # -----------------------------------------------------------------------------
-# 3) Extract the m eigenvalues with a built-in efficient function
-# -----------------------------------------------------------------------------
-
-autovalori = blocks_GS(N, J_par, J_perp)
-
-
-
-
-# ////////////////////////////////////////////////////////////////////////////
-
-
-# -----------------------------------------------------------------------------
-# 4) Obtain the "magnetization vs h" plot, starting from energy eigenvalues
+# 3) MAGNETIZATION vs h
 # -----------------------------------------------------------------------------
 
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.rcParams['text.usetex'] = False
 
+lowest_eigs = blocks_GS(N, J_par, J_perp)
+
 # Discontinuity points (edges of steps)
-x_steps, y_heights = magnetisation(autovalori)
+x_steps, y_heights = magnetisation(lowest_eigs)
 
-
+# Plot edges
 x_plot = np.insert(x_steps, 0, 0)  
 y_plot = y_heights / Nr             
 y_plot =  np.append(y_plot, y_plot[-1])  
@@ -340,19 +262,25 @@ ax_m.set_title(fr'Magnetization for ladder Hamiltonian ($J={J:.2f}$, $\theta={th
 ax_m.legend(loc='upper left')
 ax_m.grid(True)
 plt.show()
-"""
 
 
 
-# ///////////////////////////////////////////////////////////////////////////
+
+
 
 # -----------------------------------------------------------------------------
-# 5) Size scaling at fixed interaction parameters
+# 4) MAGNETIZATION (normalized) vs h: size scaling at fixed interaction param th
 # -----------------------------------------------------------------------------
 
-"""
+
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.rcParams['text.usetex'] = False
+
+
+# Plot (normalized) magnetization vs h for several ladder lengths
+# at fixed interacting parameter theta
 def multiple_plot(n_min, n_max, param_h, param_J, param_th ):
-   
     # Interaction parameters
     param_J_par = param_J * math.cos(param_th)
     param_J_perp = param_J * math.sin(param_th)
@@ -371,9 +299,7 @@ def multiple_plot(n_min, n_max, param_h, param_J, param_th ):
         y_plot = y_heights / i   # NORMALIZE by magnetization max (= n°sites/2)           
         y_plot =  np.append(y_plot, y_plot[-1])  
 
-
-        # Plot of step function
-        
+        # Plot of step function    
         ax_m.step(x_plot, y_plot, where='post', label=f'{i} rungs ')
     ax_m.set_xlabel(r'$ h $', fontsize=15)
     ax_m.set_ylabel(r'$ m $', fontsize=15)
@@ -383,7 +309,7 @@ def multiple_plot(n_min, n_max, param_h, param_J, param_th ):
     plt.show()
 
 
-justapposed_plots = multiple_plot(2, 10, 0, 1, 0)
-"""
+justapposed_plots = multiple_plot(2, 8, 0, 1, math.pi/2)
+
 
 
