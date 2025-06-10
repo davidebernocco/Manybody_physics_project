@@ -16,11 +16,11 @@ from scipy.sparse.linalg import eigsh
 from scipy.linalg import eigh_tridiagonal
 from Funz_ladder import generate_binary_arrays, array_of_integers
 
-Nr = 6
+Nr = 8
 N = 2 * Nr
 h = 0
 J = 1
-theta = 0
+theta = math.pi/2
 J_par = J * math.cos(theta)
 J_perp = J * math.sin(theta)
 
@@ -165,7 +165,7 @@ def lanczos(sp_H, sp_row, sp_col, m):
 
 # Compare the results with the built-in exact diagonalization algorithm
 start_time1 = time.time()
-GS_lanczos = lanczos(sparse_H, sparse_row, sparse_col, 20)
+GS_lanczos = lanczos(sparse_H, sparse_row, sparse_col, 50)
 print("GS energy from LANCZOS", GS_lanczos)
 end_time1 = time.time()
 elapsed_time1 = end_time1 - start_time1

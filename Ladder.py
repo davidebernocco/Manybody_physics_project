@@ -15,7 +15,10 @@ The Hilbert space associated to the full system is (C^2)tensor(C^2)...(C^2)
 import numpy as np
 import math
 from scipy.linalg import eigh
+from scipy.sparse.linalg import eigsh
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.rcParams['text.usetex'] = False
 
 from Funz_ladder import generate_binary_arrays, array_of_integers
 from Funz_ladder import Block_Hamiltonian_sparse, blocks_GS, magnetisation
@@ -27,7 +30,7 @@ N = 2*Nr  # Total number of sites on the ladder
 # Interaction parameters
 h = 0
 J = 1                 
-th = math.pi/2
+th = 0
 J_par = J*math.cos(th)
 J_perp = J*math.sin(th)
 
@@ -38,7 +41,7 @@ J_perp = J*math.sin(th)
 # 1)  Ladder Hamiltonian as EFFECTIVE HAMILTONIAN of a bosonic particle (triplet)
 #     hopping into void neighbours (singlets)
 # -----------------------------------------------------------------------------
-
+"""
 
 Sz_fix = np.asarray([i for i in range(int(-N/2), int(N/2) +1)], dtype=int)
 N_1 = np.asarray([i for i in range(N+1)], dtype=int)
@@ -141,7 +144,7 @@ print(Ham_eff)
 
 
 
-
+"""
 
 # -----------------------------------------------------------------------------
 # 2) DEGENERACY and GAP of energy eigenvalues vs interacting param theta
@@ -152,7 +155,8 @@ print(Ham_eff)
 # hamiltonian  sector, looping on different values of interacting parameter theta
 def iteration(n,th_min,th_max,d_th,sz):
     lista = []
-    for t in np.arange(th_min, th_max + d_th, d_th):
+    num_points = int(round((th_max - th_min) / d_th)) + 1
+    for t in np.linspace(th_min, th_max, num_points):
         param_Jpar = J*math.cos(t)
         param_Jperp = J*math.sin(t)
         Sz_fix = np.asarray([i for i in range(int(-n/2), int(n/2) +1)], dtype=int)
@@ -175,19 +179,21 @@ def iteration(n,th_min,th_max,d_th,sz):
     
         # Sparse Hamiltonian
         Block_H_Sz_sparse = Block_Hamiltonian_sparse(v_m_Sz_sorted, list_Sz_fixed_sorted, n, param_Jpar, param_Jperp)
-             
-        # Convert to dense
-        A_dense = Block_H_Sz_sparse.toarray()   
+        eigenv, _ = eigsh(Block_H_Sz_sparse, k=int(n//2)+1, which='SA')
+        
+        # Convert to dense (Only for LOW n!!!)
+        #A_dense = Block_H_Sz_sparse.toarray()   
         # Compute all eigenvalues (interesting for the degeneracy)
-        eigenv, _ = eigh(A_dense)
+        #eigenv, _ = eigh(A_dense) (for the full spectrum)
+        
         
         lista.append(eigenv)
         
     return lista
 
 
-t_m, t_M, d_t = 0, math.pi/2, math.pi/8
-eigen_lst = iteration(8, t_m, t_M, d_t, 0)
+n_tot,t_m, t_M, d_t, sz_sector = 24, math.pi/2-math.pi/32, math.pi/2-math.pi/32, math.pi/32, 0
+eigen_lst = iteration(n_tot, t_m, t_M, d_t, sz_sector)
 
 
 
@@ -229,7 +235,7 @@ plt.gca().spines['bottom'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
 
 plt.ylabel("Energy")
-plt.title("Energy Spectra for Varying Coupling Strengths")
+plt.title(fr"Energy Spectra for Varying Coupling Strengths ($N={n_tot:.2f}$, $S_z={sz_sector:.2f}$)")
 
 
 
@@ -238,6 +244,7 @@ plt.title("Energy Spectra for Varying Coupling Strengths")
 # 3) MAGNETIZATION vs h
 # -----------------------------------------------------------------------------
 
+"""
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.rcParams['text.usetex'] = False
@@ -246,10 +253,12 @@ lowest_eigs = blocks_GS(N, J_par, J_perp)
 
 # Discontinuity points (edges of steps)
 x_steps, y_heights = magnetisation(lowest_eigs)
+y_heights = np.append(y_heights, i)
 
 # Plot edges
-x_plot = np.insert(x_steps, 0, 0)  
-y_plot = y_heights / Nr             
+x_plot = np.insert(x_steps, 0, 0) 
+x_plot = np.append(x_plot, 5*x_plot[-1]/4) 
+y_plot = y_heights / Nr            
 y_plot =  np.append(y_plot, y_plot[-1])  
 
 
@@ -293,11 +302,14 @@ def multiple_plot(n_min, n_max, param_h, param_J, param_th ):
         
         # Discontinuity points (edges of steps)
         x_steps, y_heights = magnetisation(autovalori)
-
+        y_heights = np.append(y_heights, i)
+        
 
         x_plot = np.insert(x_steps, 0, 0)  
+        x_plot = np.append(x_plot, 5*x_plot[-1]/4) # Make last step corresponds to m=max
         y_plot = y_heights / i   # NORMALIZE by magnetization max (= n°sites/2)           
         y_plot =  np.append(y_plot, y_plot[-1])  
+       
 
         # Plot of step function    
         ax_m.step(x_plot, y_plot, where='post', label=f'{i} rungs ')
@@ -309,7 +321,6 @@ def multiple_plot(n_min, n_max, param_h, param_J, param_th ):
     plt.show()
 
 
-justapposed_plots = multiple_plot(2, 8, 0, 1, math.pi/2)
-
-
+justapposed_plots = multiple_plot(2, 6, 0, 1, math.pi/2)
+"""
 
