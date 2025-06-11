@@ -19,6 +19,7 @@ from scipy.sparse.linalg import eigsh
 import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.rcParams['text.usetex'] = False
+from scipy.optimize import curve_fit
 
 from Funz_ladder import generate_binary_arrays, array_of_integers
 from Funz_ladder import Block_Hamiltonian_sparse, blocks_GS, magnetisation
@@ -144,13 +145,13 @@ print(Ham_eff)
 
 
 
-"""
 
+"""
 # -----------------------------------------------------------------------------
 # 2) DEGENERACY and GAP of energy eigenvalues vs interacting param theta
 # -----------------------------------------------------------------------------
 
-
+"""
 # Given a fixed system size and Sz, computes all the eigenvalues of that specific
 # hamiltonian  sector, looping on different values of interacting parameter theta
 def iteration(n,th_min,th_max,d_th,sz):
@@ -192,7 +193,7 @@ def iteration(n,th_min,th_max,d_th,sz):
     return lista
 
 
-n_tot,t_m, t_M, d_t, sz_sector = 24, math.pi/2-math.pi/32, math.pi/2-math.pi/32, math.pi/32, 0
+n_tot,t_m, t_M, d_t, sz_sector = 16, math.pi/2-math.pi/32, math.pi/2-math.pi/32, math.pi/32, 0
 eigen_lst = iteration(n_tot, t_m, t_M, d_t, sz_sector)
 
 
@@ -238,6 +239,62 @@ plt.ylabel("Energy")
 plt.title(fr"Energy Spectra for Varying Coupling Strengths ($N={n_tot:.2f}$, $S_z={sz_sector:.2f}$)")
 
 
+
+"""
+
+# -----------------------------------------------------------------------------
+# 2b) Lift of degeneracy of first excited level: COS fit
+# -----------------------------------------------------------------------------
+
+E_nr = {
+    4: np.array([-2.09849, -1.99532, -1.90276]),
+    6: np.array([-3.59888, -3.54576, -3.44827, -3.40312]),
+    8: np.array([-5.09925, -5.06772, -4.99607, -4.92967, -4.90349]),
+    10: np.array([-6.59961, -6.57893, -6.52703, -6.46683, -6.42084, -6.40386]),
+    12: np.array([-8.09996, -8.08542, -8.04683, -7.9968, -7.94936, -7.91611, -7.90421])
+}
+
+k_nr = {}
+# Normalize each E_nri array by subtracting its average
+# Define the corresponding k values in [0, 2*pi/Nr]
+for i in E_nr:
+    av_i = (np.max(E_nr[i]) + np.min(E_nr[i])) / 2
+    E_nr[i] = E_nr[i] - av_i  # modifies in place
+    k_nr[i] = np.linspace(0, math.pi, len(E_nr[i]))
+
+    
+    
+def fit_cos(x, c1, c2):
+    return c1 + 2*c2*np.cos(x)
+
+
+
+
+def multiple_fit():
+    fig_c, ax_c = plt.subplots(figsize=(6.2, 4.5))
+    par_dic = {}
+    cov_dic = {}
+    for i in E_nr:
+        # Fit the curve
+        par_dic[i], cov_dic[i] = curve_fit(fit_cos, k_nr[i], E_nr[i])
+
+        # Optional: plot the result
+        x_fit = np.linspace(min(k_nr[i]), max(k_nr[i]), 500)
+        y_fit = fit_cos(x_fit, *par_dic[i])
+        ax_c.scatter(k_nr[i], E_nr[i], label='Data')
+        ax_c.plot(x_fit, y_fit, label='Fit')
+        
+    ax_c.legend()
+    ax_c.set_xlabel('x')
+    ax_c.set_ylabel('y')
+    ax_c.set_title('Fit of f(x) = cost1 + cost2 * cos(x)')
+    ax_c.grid(True)
+    plt.show()
+    
+    return par_dic, cov_dic
+
+
+justapposed_fit = multiple_fit()
 
 
 # -----------------------------------------------------------------------------
