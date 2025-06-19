@@ -193,7 +193,7 @@ def iteration(n,th_min,th_max,d_th,sz):
     return lista
 
 
-n_tot,t_m, t_M, d_t, sz_sector = 16, math.pi/2-math.pi/32, math.pi/2-math.pi/32, math.pi/32, 0
+n_tot,t_m, t_M, d_t, sz_sector = 16, math.pi/2-3*math.pi/4, math.pi/2-3*math.pi/4, 3*math.pi/4, 0
 eigen_lst = iteration(n_tot, t_m, t_M, d_t, sz_sector)
 
 
@@ -238,14 +238,15 @@ plt.gca().spines['top'].set_visible(False)
 plt.ylabel("Energy")
 plt.title(fr"Energy Spectra for Varying Coupling Strengths ($N={n_tot:.2f}$, $S_z={sz_sector:.2f}$)")
 
-
-
 """
+
+
 
 # -----------------------------------------------------------------------------
 # 2b) Lift of degeneracy of first excited level: COS fit
 # -----------------------------------------------------------------------------
-
+"""
+# Results for theta =  math.pi/2-math.pi/32. Degeneracy still not lifted completely!
 E_nr = {
     4: np.array([-2.09849, -1.99532, -1.90276]),
     6: np.array([-3.59888, -3.54576, -3.44827, -3.40312]),
@@ -279,7 +280,7 @@ def multiple_fit():
         par_dic[i], cov_dic[i] = curve_fit(fit_cos, k_nr[i], E_nr[i])
 
         # Optional: plot the result
-        x_fit = np.linspace(min(k_nr[i]), max(k_nr[i]), 500)
+        x_fit = np.linspace(min(k_nr[i]), max(k_nr[i]), 200)
         y_fit = fit_cos(x_fit, *par_dic[i])
         ax_c.scatter(k_nr[i], E_nr[i], label='Data')
         ax_c.plot(x_fit, y_fit, label='Fit')
@@ -295,7 +296,7 @@ def multiple_fit():
 
 
 justapposed_fit = multiple_fit()
-
+"""
 
 # -----------------------------------------------------------------------------
 # 3) MAGNETIZATION vs h
@@ -332,7 +333,7 @@ plt.show()
 
 
 
-
+"""
 
 # -----------------------------------------------------------------------------
 # 4) MAGNETIZATION (normalized) vs h: size scaling at fixed interaction param th
@@ -378,6 +379,6 @@ def multiple_plot(n_min, n_max, param_h, param_J, param_th ):
     plt.show()
 
 
-justapposed_plots = multiple_plot(2, 6, 0, 1, math.pi/2)
-"""
+justapposed_plots = multiple_plot(4, 12, 0, 1, 0)
+
 

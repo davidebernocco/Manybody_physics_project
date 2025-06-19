@@ -27,13 +27,13 @@ from Funz_ladder import magnetisation
 
 
 
-Nr = 6    # Number of ladder rungs
+Nr = 4    # Number of ladder rungs
 N = 2*Nr  # Total number of sites on the ladder
 
 # Interaction parameters
 h = 0
 J = 1                 
-th = math.pi/2
+th = math.pi/4
 J_par = J*math.cos(th)
 J_perp = J*math.sin(th)
 
@@ -76,7 +76,7 @@ eigenvalues_TR, _ = eigh(A_dense_TR)
 # -----------------------------------------------------------------------------
 # 2) DEGENERACY and GAP of energy eigenvalues vs interacting param theta
 # -----------------------------------------------------------------------------
-
+"""
 
 # Given a fixed system size and Sz, computes all the eigenvalues of that specific
 # hamiltonian  sector, looping on different values of interacting parameter theta
@@ -166,7 +166,7 @@ plt.title(fr"Energy Spectra for Varying Coupling Strengths ($N={n_tot:.2f}$, $S_
 
 
 
-"""
+
 # -----------------------------------------------------------------------------
 # 3) MAGNETIZATION vs h
 # -----------------------------------------------------------------------------
@@ -197,7 +197,7 @@ ax_m.grid(True)
 plt.show()
 
 
-
+"""
 
 # -----------------------------------------------------------------------------
 # 4) MAGNETIZATION (normalized) vs h: size scaling at fixed interaction param th
@@ -231,12 +231,11 @@ def multiple_plot(n_min, n_max, param_h, param_J, param_th ):
         ax_m.step(x_plot, y_plot, where='post', label=f'{i} rungs ')
     ax_m.set_xlabel(r'$ h $', fontsize=15)
     ax_m.set_ylabel(r'$ m $', fontsize=15)
-    ax_m.set_title(fr'Magnetization for ladder Hamiltonian ($J={param_J:.2f}$, $\theta={param_th:.2f}$)')
+    ax_m.set_title(fr'Magnetization for ladder TR Hamiltonian ($J={param_J:.2f}$, $\theta={param_th:.2f}$)')
     ax_m.legend(loc='upper left')
     ax_m.grid(True)
     plt.show()
 
 
-justapposed_plots_TR = multiple_plot(2, 8, 0, 1, math.pi/2)
+justapposed_plots_TR = multiple_plot(4, 12, 0, 1, 0)
 
-"""
